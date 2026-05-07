@@ -20,4 +20,4 @@ pickle.dump(model, open("models/model.pkl", "wb"))
 pickle.dump(scaler, open("models/scaler.pkl", "wb"))
 json.dump(columns, open("models/columns.json", "w"))
 
-print("✅ Multi-class model trained successfully")
+print(" Multi-class model trained successfully")
