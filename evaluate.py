@@ -21,21 +21,16 @@ y_pred = model.predict(X_test)
 # Labels
 class_names = ["Normal", "DoS", "Probe", "U2R", "R2L"]
 
-# ----------------------------
-# 1. ACCURACY
-# ----------------------------
+
 acc = accuracy_score(y_test, y_pred)
 print(f"\n✅ Accuracy: {acc * 100:.2f}%")
 
-# ----------------------------
-# 2. CONFUSION MATRIX
-# ----------------------------
+
 cm = confusion_matrix(y_test, y_pred)
 
 print("\n📊 Confusion Matrix:")
 print(cm)
 
-# Visual confusion matrix
 plt.figure(figsize=(8, 6))
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
 disp.plot(cmap="Blues")
@@ -49,9 +44,7 @@ print(classification_report(
     target_names=class_names
 ))
 
-# ----------------------------
-# 4. PRECISION / RECALL / F1
-# ----------------------------
+
 precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred)
 
 x = np.arange(len(class_names))
@@ -69,9 +62,7 @@ plt.title("Precision / Recall / F1-Score")
 plt.legend()
 plt.show()
 
-# ----------------------------
-# 5. PREDICTION DISTRIBUTION
-# ----------------------------
+
 unique, counts = np.unique(y_pred, return_counts=True)
 
 plt.figure(figsize=(8, 5))
