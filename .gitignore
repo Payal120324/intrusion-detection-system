@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+models/*.pkl
+models/*.json
+data/raw/*.csv
+.env

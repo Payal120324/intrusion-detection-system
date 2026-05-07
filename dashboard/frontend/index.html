@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Intrusion Detection Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 42px;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #94a3b8;
+        }
+
+        .upload-card,
+        .table-card,
+        .chart-card,
+        .metric-card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #38bdf8;
+        }
+
+        input[type="file"] {
+            padding: 12px;
+            width: 100%;
+            background: #334155;
+            border: none;
+            border-radius: 10px;
+            color: white;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #2563eb, #38bdf8);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #2563eb;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .normal {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        .attack {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        canvas {
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        @media(max-width: 900px) {
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>AI Intrusion Detection Dashboard</h1>
+
+    <p class="subtitle">
+        Multi-Class Intrusion Detection using Random Forest + NSL-KDD Dataset
+    </p>
+
+    <!-- Upload Section -->
+
+    <div class="upload-card">
+
+        <h2>Upload CSV File</h2>
+
+        <br>
+
+    <label>  <input type="file" id="fileInput">
+
+        <button onclick="uploadFile()">
+            Upload & Predict
+        </button>
+
+    </div>
+
+    <!-- Metrics -->
+
+    <div class="metrics-grid">
+
+        <div class="metric-card">
+            <h3>Total Records</h3>
+            <div class="metric-value" id="totalRecords">0</div>
+        </div>
+
+        <div class="metric-card">
+            <h3>Normal Traffic</h3>
+            <div class="metric-value" id="normalCount">0</div>
+        </div>
+
+        <div class="metric-card">
+            <h3>Attack Traffic</h3>
+            <div class="metric-value" id="attackCount">0</div>
+        </div>
+
+        <div class="metric-card">
+            <h3>Detection Rate</h3>
+            <div class="metric-value" id="detectionRate">0%</div>
+        </div>
+
+    </div>
+
+    <!-- Results Table -->
+
+    <div class="table-card">
+
+        <h2>Prediction Results</h2>
+
+        <div id="results"></div>
+
+    </div>
+    <!-- Charts -->
+
+    <div class="charts-grid">
+
+        <div class="chart-card">
+
+            <h2>Prediction Distribution</h2>
+
+            <canvas id="predictionChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+
+            <h2>Attack Distribution</h2>
+
+            <canvas id="attackPieChart"></canvas>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+async function uploadFile() {
+
+    const fileInput = document.getElementById("fileInput");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select a CSV file");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+        "http://127.0.0.1:8000/predict-file",
+        {
+            method: "POST",
+            body: formData
+        }
+    );
+
+    const data = await response.json();
+
+    let html = `
+        <table>
+            <tr>
+                <th>Row</th>
+                <th>Prediction</th>
+                <th>Confidence</th>
+            </tr>
+    `;
+
+    const counts = {
+        "Normal": 0,
+        "DoS": 0,
+        "Probe": 0,
+        "U2R": 0,
+        "R2L": 0
+    };
+
+    let attackCount = 0;
+
+    data.results.forEach(r => {
+
+        const confidence = (r.confidence * 100).toFixed(2);
+
+        const attackClass = r.label === "Normal"
+            ? "normal"
+            : "attack";
+
+        html += `
+            <tr>
+                <td>${r.row}</td>
+                <td class="${attackClass}">${r.label}</td>
+                <td>${confidence}%</td>
+            </tr>
+        `;
+
+        counts[r.label]++;
+
+        if (r.label !== "Normal") {
+            attackCount++;
+        }
+
+    });
+
+    html += "</table>";
+
+    document.getElementById("results").innerHTML = html;
+
+    // Metrics
+
+    const total = data.results.length;
+    const normal = counts["Normal"];
+
+    const detectionRate = (
+        (attackCount / total) * 100
+    ).toFixed(2);
+
+    document.getElementById("totalRecords").innerText = total;
+    document.getElementById("normalCount").innerText = normal;
+    document.getElementById("attackCount").innerText = attackCount;
+    document.getElementById("detectionRate").innerText =
+        detectionRate + "%";
+
+    // BAR GRAPH
+
+    const predictionCtx =
+        document.getElementById("predictionChart");
+
+    if (window.predictionChart instanceof Chart) {
+        window.predictionChart.destroy();
+    }
+
+    window.predictionChart = new Chart(predictionCtx, {
+
+        type: "bar",
+
+        data: {
+
+            labels: Object.keys(counts),
+
+            datasets: [{
+                label: "Predictions",
+                data: Object.values(counts)
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+
+        }
+
+    });
+
+    // PIE CHART
+
+    const pieCtx =
+        document.getElementById("attackPieChart");
+
+    if (window.attackPieChart instanceof Chart) {
+        window.attackPieChart.destroy();
+    }
+
+    window.attackPieChart = new Chart(pieCtx, {
+
+        type: "pie",
+
+        data: {
+
+            labels: Object.keys(counts),
+
+            datasets: [{
+                data: Object.values(counts)
+            }]
+
+        },
+
+        options: {
+            responsive: true
+        }
+
+    });
+
+}
+
+</script>
+
+</body>
+
+</html>
