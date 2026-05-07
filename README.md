@@ -282,19 +282,7 @@ Example evaluation results:
 
 ---
 
-#  Key Learning Outcomes
 
-This project demonstrates:
-- Neural Networks from scratch
-- Feature engineering
-- Multi-class classification
-- ML pipeline design
-- Model evaluation
-- API development
-- Frontend integration
-- Real-world debugging and deployment workflow
-
----
 
 #  Future Improvements
 
